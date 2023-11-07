@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <mpi.h>
+#include <vector>
 
 void printArray(int* a, int size);
 void printArray(float* a, int size);
@@ -9,40 +10,35 @@ int main(int argc, char const* argv[])
 {
     if (argc == 5)
     {
-        
+        int binCount = atoi(argv[1]);
+        float minMeas = atof(argv[2]);
+        float maxMeas = atof(argv[3]);
+        int dataCount = atoi(argv[4]);
         int myRank;
         int threadCount;
-        int binCount;
-        float minMeas;
-        float maxMeas;
-        int dataCount;
         float* localData;
         int localDataCount;
-        float* binMaxes;
-        int* globalBinCounts;
+        std::vector<float> maxes;
+        // Find bin maxes
+        for (int i = 0; i < binCount; i++) {
+            maxes.push_back(minMeas + i * (maxMeas - minMeas) / binCount);
+        }
+        float* binMaxes = maxes.data();
+        // Initialize globalBinCounts
+        std::vector<int> binCounts(binCount,0);
+        int* globalBinCounts = binCounts.data();
+
         MPI_Init(NULL,NULL);
         MPI_Comm_size(MPI_COMM_WORLD, &threadCount);
         MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
         
 
         if (myRank == 0) {
-            binCount = atoi(argv[1]);
-            minMeas = atof(argv[2]);
-            maxMeas = atof(argv[3]);
-            dataCount = atoi(argv[4]);
-            // Find bin maxes
-            binMaxes[binCount];
-            for (int i = 0; i < binCount; i++) {
-                binMaxes[i] = minMeas + i * (maxMeas - minMeas) / binCount;
-            }
-            MPI_Bcast(&binCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
-            MPI_Bcast(&minMeas, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            MPI_Bcast(&maxMeas, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            MPI_Bcast(&dataCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
-            MPI_Bcast(binMaxes, dataCount, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
             srand(100);
-            //float data[dataCount];
-            float* data;
+
+            std::vector<float> temp(dataCount, 0);
+            float* data = temp.data();
 
             // Load data with random float values
             for (int i = 0; i < dataCount; i++)
@@ -52,7 +48,8 @@ int main(int argc, char const* argv[])
             }   
             // Send sub arrays of data to different threads
             //int sendCounts[threadCount];
-            int* sendCounts;
+            std::vector<int> send_counts(threadCount, 0);
+            int* sendCounts = send_counts.data();
 
             for (int rank = 0; rank < threadCount; rank++)
             {
@@ -71,12 +68,17 @@ int main(int argc, char const* argv[])
             // Send local data count
             MPI_Scatter(sendCounts, 1, MPI_INT, &localDataCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
             // Send local data
-            MPI_Scatterv(data,sendCounts,0,MPI_FLOAT,localData,sendCounts[myRank],MPI_FLOAT,0,MPI_COMM_WORLD); 
-            std::memcpy(localData,data,sendCounts[0]*sizeof(float));
+            //MPI_Scatterv(data,sendCounts,0,MPI_FLOAT,localData,sendCounts[myRank],MPI_FLOAT,0,MPI_COMM_WORLD); 
+            MPI_Scatterv(data, sendCounts, 0, MPI_FLOAT, NULL, NULL, MPI_FLOAT, 0, MPI_COMM_WORLD);
             localDataCount = sendCounts[0];
+            std::vector<float> local_data(localDataCount, 0);
+            float* localData = local_data.data();
+            std::memcpy(localData, data, sendCounts[0] * sizeof(float));
         }
         else {
             MPI_Scatter(NULL, NULL, MPI_INT, &localDataCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            std::vector<float> local_data(localDataCount, 0);
+            float* localData = local_data.data();
             MPI_Scatterv(NULL, NULL, NULL, MPI_FLOAT, localData, localDataCount, MPI_FLOAT, 0, MPI_COMM_WORLD);
         }
         
