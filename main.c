@@ -139,9 +139,9 @@ int main(int argc, char const* argv[])
 
         MPI_Reduce(localBinCounts,globalBinCounts,binCount,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
 
+        // Rank 0 prints the results
         if (myRank == 0)
         {
-            // Rank 0 prints the results
             printf("Data: ");
             printFloatArray(data,dataCount);
             printf("===== Parallel Histogram =====\n");
@@ -152,8 +152,7 @@ int main(int argc, char const* argv[])
             serialHistogram(data,binCount,minMeas,maxMeas,dataCount);
             
         }
-        MPI_Barrier(MPI_COMM_WORLD);
-        free(binMaxes), free(localData), free(sendCounts);
+        free(binMaxes), free(localData), free(sendCounts), free(displs);
         free(localBinCounts);
         free(data);
 
@@ -162,6 +161,7 @@ int main(int argc, char const* argv[])
     return 0;
 }
 
+// Function to print the first *size* elements of array a
 void printIntArray(int* a, int size) {
     for (int i = 0; i < size; i++) {
         printf("%d ",a[i]);
@@ -169,6 +169,7 @@ void printIntArray(int* a, int size) {
     printf("\n");
 }
 
+// Function to print the first *size* elements of array a
 void printFloatArray(float* a, int size) {
     for (int i = 0; i < size; i++) {
         printf("%f ",a[i]);
@@ -176,6 +177,7 @@ void printFloatArray(float* a, int size) {
     printf("\n");
 }
 
+// Serial implementation of histogram computation
 void serialHistogram(float* data,int binCount, float minMeas, float maxMeas, int dataCount) {
     float* binMaxes = malloc(binCount*sizeof(float));
     int* binCounts = malloc(binCount*sizeof(int));
