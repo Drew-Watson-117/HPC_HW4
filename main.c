@@ -44,7 +44,7 @@ int main(int argc, char const* argv[])
 
                 // Generate Random data
                 srand(100);
-                float* data = (float*)malloc(dataCount*sizeof(float));
+                data = (float*)malloc(dataCount*sizeof(float));
                 // Load data with random float values
                 for (int i = 0; i < dataCount; i++)
                 {
@@ -91,8 +91,6 @@ int main(int argc, char const* argv[])
                 localDataCount = sendCounts[0];
                 localData = malloc(localDataCount*sizeof(float));
                 memcpy(localData,data,localDataCount*sizeof(float));
-                printf("Data: ");
-                printFloatArray(data,dataCount);
             }
             else {
                 printf("Error: Invalid number of command line arguments specified");
@@ -112,7 +110,7 @@ int main(int argc, char const* argv[])
 
             MPI_Scatter(sendCounts, 1, MPI_INT, &localDataCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
             localData = malloc(localDataCount*sizeof(float));
-            MPI_Scatterv(data,sendCounts,displs,MPI_FLOAT,localData,localDataCount,MPI_FLOAT,0,MPI_COMM_WORLD);
+            MPI_Scatterv(NULL,sendCounts,displs,MPI_FLOAT,localData,localDataCount,MPI_FLOAT,0,MPI_COMM_WORLD);
         }
         
         // Compute local histogram
@@ -144,13 +142,17 @@ int main(int argc, char const* argv[])
         if (myRank == 0)
         {
             // Rank 0 prints the results
+            printf("Data: ");
+            printFloatArray(data,dataCount);
+            printf("===== Parallel Histogram =====\n");
             printf("Bin Maxes: ");
             printFloatArray(binMaxes, binCount);
             printf("Bin Counts: ");
             printIntArray(globalBinCounts, binCount);
-            // serialHistogram(data,binCount,minMeas,maxMeas,dataCount);
+            serialHistogram(data,binCount,minMeas,maxMeas,dataCount);
+            
         }
-
+        MPI_Barrier(MPI_COMM_WORLD);
         free(binMaxes), free(localData), free(sendCounts);
         free(localBinCounts);
         free(data);
